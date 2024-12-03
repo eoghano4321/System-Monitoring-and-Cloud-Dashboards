@@ -1,0 +1,31 @@
+{
+    "web": {
+        "host": "http://actionsavage.pythonanywhere.com",
+        "port": 5656,
+        "debug": true
+    },
+    "client": {
+        "interval": 10
+    },
+    "database": {
+        "connection_string": "sqlite:///system_metrics.db"
+    },
+    "logging_config": {
+        "console_output": {
+            "enabled": true,
+            "level": "INFO",
+            "format": "%(levelname).1s:[%(name)s]> %(message)s",
+            "date_format": "%Y-%m-%d %H:%M:%S"
+        },
+        "file_output": {
+            "enabled": true,
+            "level": "DEBUG",
+            "format": "%(asctime)s -%(levelname)s - %(name)s -  %(pathname)s:%(lineno)d - %(message)s",
+            "date_format": "%Y-%m-%d %H:%M:%S",
+            "log_dir": "logs",
+            "filename": "app",
+            "max_bytes": 10485760,
+            "backup_count": 5
+        }
+    }
+}
