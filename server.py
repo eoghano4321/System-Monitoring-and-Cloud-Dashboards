@@ -30,15 +30,15 @@ class CursorManager:
 
 class Application:
     def __init__(self, logger):
-        self.config = Config(__file__)
+        self.config = Config(script_path=__file__, run_type="server")
         self.sqllite_file = self.config.database.connection_string.split('sqlite:///')[1]
         self.logger = logger
         self.webserver = Flask(__name__)
         self.engine = create_engine(self.config.database.connection_string)
-        dashboard = Dashboard()
-        self.dash_app = dashboard.create_dash_app(self.webserver, self.engine)
         self.setup_routes()
         self.create_tables()
+        dashboard = Dashboard()
+        self.dash_app = dashboard.create_dash_app(self.webserver, self.engine)
         self.logger.debug("Server application initialised")
 
     def create_tables(self):
@@ -49,6 +49,8 @@ class Application:
     def setup_routes(self):
         self.webserver.route("/hello", methods=['GET'])(self.helloWorld)
         self.webserver.route("/metrics", methods=['POST'])(self.uploadMetrics)
+        self.webserver.route("/threshold", methods=['POST'])(self.updateMetricThreshold)
+        self.webserver.route("/threshold", methods=['GET'])(self.getMetricThreshold)
         self.webserver.route("/dashboards", methods=['GET'])(self.displayMetrics)
 
     def helloWorld(self):
@@ -58,6 +60,8 @@ class Application:
     def uploadMetrics(self):
         session = None
         try:
+            message = 'Metric uploaded successfully'
+            criticalDevices = []
             data = request.get_json()
             self.logger.info("Upload metrics called")
             dto_aggregator = DTO_Aggregator.from_dict(data)
@@ -103,12 +107,12 @@ class Application:
                             device_id=device.device_id,
                             metric_type=dto_metric.name
                         ).first()
-                        self.logger.info("TYPE: %s for %s %s", metric_type, device.device_id, device.name)
 
                         if not metric_type:
                             metric_type = MetricType(
                                 device_id=device.device_id,
-                                metric_type=dto_metric.name
+                                metric_type=dto_metric.name,
+                                metric_threshold=dto_metric.threshold
                             )
                             session.add(metric_type)
                             session.flush()
@@ -119,6 +123,9 @@ class Application:
                             metric_value=float(dto_metric.value)
                         )
                         session.add(device_metric_value)
+                        if metric_type.metric_threshold and device_metric_value.metric_value >= metric_type.metric_threshold:
+                            message = 'Some devices above threshold'
+                            criticalDevices.append(device.name)
 
                         self.logger.info("Uploaded: %s %s", device_metric_value.metric_type_id, device_metric_value.metric_value) 
 
@@ -128,7 +135,8 @@ class Application:
 
             return {
                 'status': 'success',
-                'message': 'Metric uploaded successfully'
+                'message': message,
+                'criticalDevices': criticalDevices
             }, 201
         except Exception as e:
             if session is not None:
@@ -148,6 +156,91 @@ class Application:
     def displayMetrics(self):
         self.logger.info("Redirecting to Dash app")
         return self.dash_app.index()
+    
+    def updateMetricThreshold(self):
+        session = None
+        try:
+            data = request.get_json()
+            self.logger.info("Update metric threshold called")
+            session = Session(self.engine)
+            device = session.query(Device).filter_by(
+                name=data['device_name']
+            ).first()
+
+            metric_type = session.query(MetricType).filter_by(
+                device_id=device.device_id,
+                metric_type=data['metric_type']
+            ).first()
+
+            if not metric_type:
+                return {
+                    'status': 'error',
+                    'message': 'Metric type not found'
+                }, 404
+
+            metric_type.metric_threshold = data['new_threshold']
+
+            self.logger.info("Metric threshold updated: %s %s", metric_type.metric_type, metric_type.metric_threshold)
+            session.commit()
+            session.close()
+            return {
+                'status': 'success',
+                'message': 'Metric threshold updated successfully'
+            }, 200
+        except Exception as e:
+            if session is not None:
+                self.logger.error("Rolling back session due to error: %s", str(e))
+                try:
+                    session.rollback()
+                    session.close()
+                except Exception as e:
+                    self.logger.exception("Error rolling back session: %s", str(e))
+
+            self.logger.exception("Error in update_metric_threshold route: %s", str(e))
+            return {
+                'status': 'error',
+                'message': str(e)
+            }, 500
+    
+    def getMetricThreshold(self):
+        session = None
+        try:
+            data = request.get_json()
+            self.logger.info("Get metric threshold called")
+            session = Session(self.engine)
+
+            device = session.query(Device).filter_by(
+                name=data['device_name']
+            ).first()
+
+            metric_type = session.query(MetricType).filter_by(
+                device_id=device.device_id,
+                metric_type=data['metric_type']
+            ).first()
+
+            if not metric_type:
+                return {
+                    'status': 'error',
+                    'message': 'Metric type not found'
+                }, 404
+
+            session.close()
+            return {
+                'status': 'success',
+                'message': metric_type.metric_threshold
+            }, 200
+        except Exception as e:
+            if session is not None:
+                self.logger.error("Rolling back session due to error: %s", str(e))
+                try:
+                    session.rollback()
+                    session.close()
+                except Exception as e:
+                    self.logger.exception("Error rolling back session: %s", str(e))
+            return {
+                'status': 'error',
+                'message': str(e)
+            }, 500
 
     def run(self) -> int:
         try:

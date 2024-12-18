@@ -5,7 +5,7 @@ from lib_config.config import Config
 
 class ApplicationHandler:
     def __init__(self):
-        self.config = Config(__file__)
+        self.config = Config()
         self.logger = logging.getLogger()
         self.logger.info("Starting...")
         
@@ -31,6 +31,7 @@ class ApplicationHandler:
         Import and run the server from server.py, optionally setting the port and host address
         """
         from client import Application
+        self.logger.info(host)
 
         # Create an instance of the Application and override the port if provided
         app = Application(self.logger)
@@ -63,7 +64,7 @@ class ApplicationHandler:
             return 1
         elif args.client:
             self.logger.info(f"Starting client to point to {args.ip or 'default IP'}:{args.port or 'default port'}")
-            return self.run_client(host=args.ip, port=args.port)
+            return self.run_client(host="http://"+args.ip, port=args.port)
         elif args.server:
             self.logger.info(f"Starting server on {args.ip or 'default IP'}:{args.port or 'default port'}")
             return self.run_server(host=args.ip, port=args.port)

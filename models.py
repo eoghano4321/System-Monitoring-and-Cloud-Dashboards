@@ -37,6 +37,7 @@ class MetricType(Base):
     metric_type_id = Column(Integer, primary_key=True)
     device_id = Column(ForeignKey('devices.device_id'), nullable=False)
     metric_type = Column(String, nullable=False)
+    metric_threshold = Column(Float, nullable=True)
     
     device = relationship('Device')
 

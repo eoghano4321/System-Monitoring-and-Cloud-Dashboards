@@ -16,21 +16,25 @@ import logging
 class DTO_Metric:
     name: str
     value: float
+    threshold: float = field(default=None)
 
 @dataclass_json
 @dataclass
 class DTO_DataSnapshot:
     timestamp_utc: datetime = field(
-        default_factory=datetime.now, 
-        metadata={'dataclasses_json': {'encoder': lambda d: d.isoformat(),
-                                       'decoder': datetime.fromisoformat}}  # Custom encoder for datetime
+        default_factory=lambda: datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
+        metadata={'dataclasses_json': {
+            'encoder': lambda d: d.isoformat() if isinstance(d, datetime) else d,
+            'decoder': lambda d: datetime.fromisoformat(d) if isinstance(d, str) else d
+        }}
     )
     metrics: List[DTO_Metric] = field(default_factory=list)
+    device_name: str = field(default=None)
 
     def to_dict(self):
         """Convert DTO_DataSnapshot to a dictionary for JSON serialization."""
         return {
-            'timestamp_utc': self.timestamp_utc,  # Convert datetime to ISO format
+            'timestamp_utc': self.timestamp_utc.isoformat(),
             'metrics': [metric.to_dict() for metric in self.metrics]
         }
 

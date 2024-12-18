@@ -1,0 +1,8 @@
+{
+    "idf.portWin": "COM8",
+    "idf.flashType": "JTAG",
+    "files.associations": {
+        "gpio.h": "c",
+        "sys.h": "c"
+    }
+}

@@ -1,55 +1,48 @@
 import logging
-from systemMetrics import DTO_DataSnapshot, DTO_Device, DTO_Aggregator
+from systemMetrics import DTO_Aggregator
 import requests
 from collections import deque
 
 class MetricsApi:
-    logger = logging.getLogger()
-    def __init__(self):
+    def __init__(self, config, logger):
         self.snapshot_queue = deque()
-    
-    def aggregateSnapshots(self, name, snapshot: DTO_DataSnapshot):
-        device = DTO_Device(
-            name,
-            data_snapshots=list([snapshot])
-        )
-        return device
-    
-    def aggregateDevices(self, platform_id, name, device: DTO_Device):
-        self.logger.debug("Collected snapshots for device: %s", device)
-        aggregator = DTO_Aggregator(
-            platform_uuid=platform_id,
-            name=name,
-            devices=list([device])
-        )
-        self.logger.debug("Aggregator: %s", aggregator)
-        return aggregator
+        self.config = config
+        self.logger = logger
 
-
-    def uploadMetrics(self, aggregator: DTO_Aggregator):     
+    def uploadMetrics(self, aggregator: DTO_Aggregator):
+        criticalDevices = []
         self.logger.debug("Aggregated devices: %s", aggregator.to_dict())
         self.snapshot_queue.append(aggregator.to_dict())
         self.logger.info("Current upload queue size: %s", len(self.snapshot_queue))
         while self.snapshot_queue: # TODO: Maybe turn this into another function called flush that can be called by a different thread
             snapshot = self.snapshot_queue.popleft()
             try:
-                response = requests.post("http://localhost:5656/metrics", json=snapshot)
+                endpoint = f"{self.config.web.host}:{self.config.web.port}/metrics"
+                response = requests.post(endpoint, json=snapshot) 
                 if response.status_code == 201:
-                    self.logger.info("Snapshot uploaded successfully")
+                    try:
+                        response_data = response.json()  # Parse the response as JSON
+                        self.logger.debug(response_data)
+                        critical_devices = response_data.get("criticalDevices", [])
+                        if critical_devices:
+                            criticalDevices.extend(critical_devices)  # Add to the list
+                    except ValueError as e:
+                        self.logger.error("Failed to parse response JSON: %s", e)
                 else:
                     self.logger.error("Failed to upload snapshot, status code: %s, response: %s", response.status_code, response.text)
                     self.snapshot_queue.appendleft(snapshot)
-                    return 1
+                    return []
             except Exception as e:
                 self.logger.error("Failed to upload snapshot: %s", e)
                 self.snapshot_queue.appendleft(snapshot)
-                return 1
+                return []
         self.logger.info("All snapshots in upload queue uploaded successfully")
-        return 0
+        return criticalDevices
     
     def testServerLive(self):
         try:
-            response = requests.get("http://localhost:5656/hello")
+            endpoint = self.config.web.host + ":" + str(self.config.web.port) + "/hello"
+            response = requests.get(endpoint)
             if response.status_code == 200:
                 self.logger.info("Server is live")
                 return 0

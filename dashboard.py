@@ -107,7 +107,7 @@ class Dashboard:
             ], style={'display': 'grid', 'gridTemplateColumns': '1fr 1fr', 'gap': '10px'}),  # 2x2 grid layout for divs
             dcc.Interval(
                 id='interval-component',
-                interval=5000,  # Update every 5 seconds
+                interval=10000,  # Update every 10 seconds
                 n_intervals=0
             )
         ])
@@ -163,6 +163,7 @@ class Dashboard:
                             .limit(10)
                         )
                         results = query.all()
+                        results.reverse()
 
                         values = [float(r.metric_value) for r in results]
                         timestamps = [
