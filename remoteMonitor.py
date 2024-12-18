@@ -33,6 +33,7 @@ class remoteMonitor:
     def handleEsp32Connection(self, conn, addr):
         """Handle an incoming connection from ESP32."""
         self.logger.info(f"Connection established with ESP32 at {addr}")
+        connected_device = None
         try:
             while True:  # Keep the connection open
                 data = conn.recv(1024)  # Receive raw binary data
@@ -47,6 +48,7 @@ class remoteMonitor:
                 with threading.Lock():
                     if device_name not in self.esp32_metrics:
                         self.device_connections[device_name] = conn
+                        connected_device = device_name
                         self.esp32_metrics[device_name] = []
                     self.esp32_metrics[device_name].append(metrics)
                 self.logger.info(f"Device name: {device_name}, Metrics: {metrics}")
@@ -55,7 +57,8 @@ class remoteMonitor:
         except Exception as e:
             self.logger.error(f"Error handling ESP32 connection: {e}")
         finally:
-            self.device_connections.pop(device_name, None)  # Remove the connection
+            if connected_device:
+                self.device_connections.pop(connected_device, None)  # Remove the connection
             conn.close()
 
 

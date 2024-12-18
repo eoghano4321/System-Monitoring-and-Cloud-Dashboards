@@ -3,6 +3,8 @@
     "idf.flashType": "JTAG",
     "files.associations": {
         "gpio.h": "c",
-        "sys.h": "c"
+        "sys.h": "c",
+        "timemanager.h": "c",
+        "gpiomanager.h": "c"
     }
 }
