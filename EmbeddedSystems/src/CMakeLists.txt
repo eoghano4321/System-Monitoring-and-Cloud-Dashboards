@@ -4,4 +4,10 @@
 FILE(GLOB_RECURSE app_sources ${CMAKE_SOURCE_DIR}/src/*.*)
 
 idf_component_register(SRCS "main.c"
-                    INCLUDE_DIRS ".")
+                            "wifiManager.c"
+                            "timeManager.c"
+                            "socketManager.c"
+                            "gpioManager.c"
+                            "dataCollector.c"
+                            "gasSensorManager.c"
+                    INCLUDE_DIRS "." "../include")

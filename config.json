@@ -5,10 +5,15 @@
         "debug": true
     },
     "client": {
-        "interval": 10
+        "interval": 10,
+        "socket_host": "0.0.0.0",
+        "socket_port": 5665
     },
     "database": {
         "connection_string": "sqlite:///system_metrics.db"
+    },
+    "aggregator": {
+        "agg_id": "49ceb0f4-3d61-4e7b-a9e0-066140caf7ca"
     },
     "logging_config": {
         "console_output": {
